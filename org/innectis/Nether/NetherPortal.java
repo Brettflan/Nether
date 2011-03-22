@@ -4,11 +4,13 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.util.Vector;
+import org.bukkit.World.Environment;
 
 import java.util.ArrayList;
 
 public class NetherPortal {
-	private static final boolean DEBUG = true;
+	private static final boolean DEBUG = false;
 	
 	private Block block;
 	
@@ -24,26 +26,29 @@ public class NetherPortal {
 		block = b;
 	}
 
-	// Return a random spawnable location
-	public Location getSpawn(float yaw) {
-		// correct yaw to range of 360 degrees
-		yaw = yaw % 360;
-		if (yaw < 0) yaw += 360.0F;
-		double offset = 1.5;  // default for west(y+)/south(x+) offset
+	// Return a spawnable location
+	public Location getSpawn(float yaw, Vector velocity) {
+		// offset based on appropriate exit direction; remains barely inside portal at 0.19 away from center (which is 0.5), far enough for view to be unobscured
+		double offsetVelocity = 0.69;  // default for west(z+)/south(x+) offset
+		double offsetCenter = 1.0;  // for center of portal, in middle of the 2 portal block columns
 
-		if (block.getWorld().getBlockAt(block.getX() + 1, block.getY(), block.getZ()).getType().equals(Material.PORTAL) ||
-				block.getWorld().getBlockAt(block.getX() - 1, block.getY(), block.getZ()).getType().equals(Material.PORTAL)) {
+		if (block.getRelative(1, 0, 0).getType().equals(Material.PORTAL) ||
+				block.getRelative(-1, 0, 0).getType().equals(Material.PORTAL)) {
 			// portal is in X direction
-			if (yaw > 90 && yaw <= 270)  // (yaw 180ish, facing east)
-				offset = -0.5;  // offset east
-			return new Location(block.getWorld(), block.getX() + 0.5,
-					block.getY(), block.getZ() + offset, yaw, 0);
+			if (velocity.getZ() < 0)
+				offsetVelocity = 0.31;  // offset east(z-)
+			if (block.getRelative(-1, 0, 0).getType().equals(Material.PORTAL))
+				offsetCenter = 0;
+			return new Location(block.getWorld(), block.getX() + offsetCenter,
+					block.getY(), block.getZ() + offsetVelocity, yaw, 0);
 		} else {
 			// portal is in Z direction
-			if (yaw > 0 && yaw <= 180)  // (yaw 90ish, facing north)
-				offset = -0.5;  // offset north
-			return new Location(block.getWorld(), block.getX() + offset,
-					block.getY(), block.getZ() + 0.5, yaw, 0);
+			if (velocity.getX() < 0)
+				offsetVelocity = 0.31;  // offset north(x-)
+			if (block.getRelative(0, 0, -1).getType().equals(Material.PORTAL))
+				offsetCenter = 0;
+			return new Location(block.getWorld(), block.getX() + offsetVelocity,
+					block.getY(), block.getZ() + offsetCenter, yaw, 0);
 		}
 	}
 
@@ -221,27 +226,53 @@ public class NetherPortal {
 	// Will occasionally end up making portals in bad places, but let's hope not
 	public static NetherPortal createPortal(Block dest, boolean orientX) {
 		World world = dest.getWorld();
-		
-		// Try not to spawn within water or lava
-		Material m = dest.getType();
-		while ((m.equals(Material.LAVA) || m.equals(Material.WATER) ||
-				m.equals(Material.STATIONARY_LAVA) || m.equals(Material.STATIONARY_WATER)) &&
-				dest.getY() < 70) {
-			dest = world.getBlockAt(dest.getX(), dest.getY() + 4, dest.getZ());
-			m = dest.getType();
-		}
-		
+
 		// Not too high or too low overall
 		if (dest.getY() > 120) {
 			dest = world.getBlockAt(dest.getX(), 120, dest.getZ());
 		} else if (dest.getY() < 8) {
 			dest = world.getBlockAt(dest.getX(), 8, dest.getZ());
 		}
+
+		// Search for an area along the y axis that is suitable.
+		// Will check nearest blocks to dest first.
 		
+		Block		checkBlock, chosenBlock = dest;
+		int			quality, chosenQuality = 0;
+
+		for(int y1 = dest.getY(), y2 = dest.getY(); (y1 > 8) || (y2 < 120); --y1, ++y2){
+			// Look below.
+			if(y1 > 8){
+				checkBlock = world.getBlockAt(dest.getX(), y1, dest.getZ());
+				quality = checkPortalQuality(checkBlock, orientX);
+
+				if(quality > chosenQuality){
+					chosenQuality = quality;
+					chosenBlock = checkBlock;
+
+					if(quality >= 28) break;
+				}
+			}
+
+			// Look above.
+			if(y2 < 120) if(y2 != y1){
+				checkBlock = world.getBlockAt(dest.getX(), y2, dest.getZ());
+				quality = checkPortalQuality(checkBlock, orientX);
+
+				if(quality > chosenQuality){
+					chosenQuality = quality;
+					chosenBlock = checkBlock;
+
+					if(quality >= 28) break;
+				}
+			}
+		}
+
+		dest = chosenBlock;
+
 		// Create the physical portal
 		int x = dest.getX(), y = dest.getY(), z = dest.getZ();
 		
-		// Clear area around portal
 		ArrayList<Block> columns = new ArrayList<Block>();
 		for (int x2 = x - 4; x2 <= x + 5; ++x2) {
 			for (int z2 = z - 4; z2 <= z + 5; ++z2) {
@@ -254,10 +285,24 @@ public class NetherPortal {
 		
 		// Clear area around portal
 		for (Block col : columns) {
-			// Stone platform
-			world.getBlockAt(col.getX(), y - 1, col.getZ()).setType(Material.STONE);
+			// Stone platform, if needed.
+			checkBlock = world.getBlockAt(col.getX(), y - 1, col.getZ());
+			if(!canStand(checkBlock.getTypeId())){
+				if(world.getEnvironment() == Environment.NETHER) checkBlock.setType(Material.NETHERRACK);
+				else checkBlock.setType(Material.STONE);
+			}
+
+			// Air pocket.
 			for (int yd = 0; yd < 4; ++yd) {
-				world.getBlockAt(col.getX(), y + yd, col.getZ()).setType(Material.AIR);
+				checkBlock = world.getBlockAt(col.getX(), y + yd, col.getZ());
+				if(!canBreathe(checkBlock.getTypeId())) checkBlock.setType(Material.AIR);
+			}
+
+			// Roof, if needed.
+			checkBlock = world.getBlockAt(col.getX(), y + 3, col.getZ());
+			if(canFall(checkBlock.getTypeId())){
+				if(world.getEnvironment() == Environment.NETHER) checkBlock.setType(Material.NETHERRACK);
+				else checkBlock.setType(Material.STONE);
 			}
 		}
 		
@@ -265,13 +310,18 @@ public class NetherPortal {
 		for (int xd = -1; xd < 3; ++xd) {
 			for (int yd = -1; yd < 4; ++yd) {
 				if (xd == -1 || yd == -1 || xd == 2 || yd == 3) {
-					Block b = null;
 					if (orientX)
-						b = world.getBlockAt(x + xd, y + yd, z);
+						world.getBlockAt(x + xd, y + yd, z).setType(Material.OBSIDIAN);
 					else
-						b = world.getBlockAt(x, y + yd, z + xd);
+						world.getBlockAt(x, y + yd, z + xd).setType(Material.OBSIDIAN);
+				}
 
-					b.setType(Material.OBSIDIAN);
+				// Be sure the portal is full of only air, at this point.
+				if((xd == 0 || xd == 1) && yd > -1 && yd < 3){
+					if (orientX)
+						world.getBlockAt(x + xd, y + yd, z).setType(Material.AIR);
+					else
+						world.getBlockAt(x, y + yd, z + xd).setType(Material.AIR);
 				}
 			}
 		}
@@ -280,5 +330,75 @@ public class NetherPortal {
 		dest.setType(Material.FIRE);
 		
 		return new NetherPortal(dest);
-	}	
+	}
+
+	// Returns a value 0-28.
+	private static int checkPortalQuality(Block checkBlock, boolean orientX){
+		int	quality = 0;
+		int xVal = orientX ? 1 : 0;
+		int zVal = orientX ? 0 : 1;
+
+		// Check inside frame. Priority high-low, total 18.
+		if(canBreathe(checkBlock.getTypeId())) quality += 6;
+		if(canBreathe(checkBlock.getRelative(xVal, 0, zVal).getTypeId())) quality += 6;
+		if(canBreathe(checkBlock.getRelative(0, 1, 0).getTypeId())) quality += 2;
+		if(canBreathe(checkBlock.getRelative(xVal, 1, zVal).getTypeId())) quality += 2;
+		if(canBreathe(checkBlock.getRelative(0, 2, 0).getTypeId())) quality += 1;
+		if(canBreathe(checkBlock.getRelative(xVal, 2, zVal).getTypeId())) quality += 1;
+
+		// Check ground under frame.  Priority mid, total 6.
+		if(canStand(checkBlock.getRelative(0, -1, 0).getTypeId())) quality += 3;
+		if(canStand(checkBlock.getRelative(xVal, -1, zVal).getTypeId())) quality += 3;
+
+		// Check ground around frame.  Priority low, total 4.
+		if(canStand(checkBlock.getRelative(1, -1, 1).getTypeId())) quality += 1;
+		if (orientX)
+		{
+			if(canStand(checkBlock.getRelative(0, -1, -1).getTypeId())) quality += 1;
+			if(canStand(checkBlock.getRelative(1, -1, -1).getTypeId())) quality += 1;
+			if(canStand(checkBlock.getRelative(0, -1, 1).getTypeId())) quality += 1;
+		}
+		else
+		{
+			if(canStand(checkBlock.getRelative(-1, -1, 0).getTypeId())) quality += 1;
+			if(canStand(checkBlock.getRelative(-1, -1, 1).getTypeId())) quality += 1;
+			if(canStand(checkBlock.getRelative(1, -1, 0).getTypeId())) quality += 1;
+		}
+
+		return(quality);
+	}
+
+	private static boolean canStand(int mat){
+		// Leave out the types that have to be atop a solid block, though not plants,
+		// and others you don't want to destroy too: 55,63,64,65,66,68,69,70,71,72,75,76,77,93,94
+		final int[] notSupporting = {0,6,8,9,10,11,37,38,39,40,50,51,59,83,85,90};
+		
+		for(int x = 0; x < notSupporting.length; ++x){
+			if(mat == notSupporting[x]) return(false);
+		}
+		
+		return(true);
+	}
+
+	private static boolean canBreathe(int mat){
+		// All the types that include a breathable air pocket, not including fire.
+		final int[] isBreathable = {0,6,37,38,39,40,50,55,59,63,64,65,66,68,69,70,71,72,75,76,77,83,93,94};
+		
+		for(int x = 0; x < isBreathable.length; ++x){
+			if(mat == isBreathable[x]) return(true);
+		}
+		
+		return(false);
+	}
+
+	private static boolean canFall(int mat){
+		// All the types that can fall on the player, causing much pain.
+		final int[] isUnstable = {8,9,10,11,12,13};
+		
+		for(int x = 0; x < isUnstable.length; ++x){
+			if(mat == isUnstable[x]) return(true);
+		}
+		
+		return(false);
+	}
 }
