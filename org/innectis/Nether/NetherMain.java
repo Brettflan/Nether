@@ -58,6 +58,7 @@ public class NetherMain extends JavaPlugin
 
 	public void onDisable() {
 		getServer().getScheduler().cancelTask(PlayerMonitor);
+		PlayerMonitor = -1;
 	}
 
 	public boolean playerInPortal(String player) {
