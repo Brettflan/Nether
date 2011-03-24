@@ -12,7 +12,6 @@ import java.util.ArrayList;
 public class NetherPortal {
 
 	private Block block;
-	private NetherMain main;
 	
 	public NetherPortal(Block b) {
 		block = b;
@@ -259,7 +258,7 @@ public class NetherPortal {
 					chosenQuality = quality;
 					chosenBlock = checkBlock;
 
-					if(quality >= 28) break;
+					if(quality >= 36) break;
 				}
 			}
 
@@ -272,7 +271,7 @@ public class NetherPortal {
 					chosenQuality = quality;
 					chosenBlock = checkBlock;
 
-					if(quality >= 28) break;
+					if(quality >= 36) break;
 				}
 			}
 		}
@@ -287,8 +286,10 @@ public class NetherPortal {
 		ArrayList<Block> columns = new ArrayList<Block>();
 		for (int x2 = x - 4; x2 <= x + 5; ++x2) {
 			for (int z2 = z - 4; z2 <= z + 5; ++z2) {
-				int dx = x - x2, dz = z - z2;
-				if (dx * dx + dz * dz < 12) {
+				float dx, dz;
+				if (orientX){dx = (x - x2)+0.5f;  dz = z - z2;}
+				else{dx = x - x2;  dz = (z - z2)+0.5f;}
+				if (dx * dx + dz * dz < 9) {
 					columns.add(world.getBlockAt(x2, 0, z2));
 				}
 			}
@@ -343,37 +344,49 @@ public class NetherPortal {
 		return new NetherPortal(dest);
 	}
 
-	// Returns a value 0-34.
+	// Returns a value 0-42.
 	private static int checkPortalQuality(Block checkBlock, boolean orientX){
 		int	quality = 0;
 		int xVal = orientX ? 1 : 0;
 		int zVal = orientX ? 0 : 1;
 
-		// Check inside frame. Priority high-low, total 18.
-		if(canBreathe(checkBlock.getTypeId())) quality += 6;
-		if(canBreathe(checkBlock.getRelative(xVal, 0, zVal).getTypeId())) quality += 6;
-		if(canBreathe(checkBlock.getRelative(0, 1, 0).getTypeId())) quality += 2;
-		if(canBreathe(checkBlock.getRelative(xVal, 1, zVal).getTypeId())) quality += 2;
-		if(canBreathe(checkBlock.getRelative(0, 2, 0).getTypeId())) quality += 1;
-		if(canBreathe(checkBlock.getRelative(xVal, 2, zVal).getTypeId())) quality += 1;
+		// Check inside frame. Priority high-low, total 26.
+		if(canBreathe(checkBlock.getTypeId()))
+			quality += 9;
+		if(canBreathe(checkBlock.getRelative(xVal, 0, zVal).getTypeId()))
+			quality += 9;
+		if(canBreathe(checkBlock.getRelative(0, 1, 0).getTypeId()))
+			quality += 3;
+		if(canBreathe(checkBlock.getRelative(xVal, 1, zVal).getTypeId()))
+			quality += 3;
+		if(canBreathe(checkBlock.getRelative(0, 2, 0).getTypeId()))
+			quality += 1;
+		if(canBreathe(checkBlock.getRelative(xVal, 2, zVal).getTypeId()))
+			quality += 1;
 
 		// Check ground under frame.  Priority mid, total 8.
-		if(canStand(checkBlock.getRelative(0, -1, 0).getTypeId())) quality += 4;
-		if(canStand(checkBlock.getRelative(xVal, -1, zVal).getTypeId())) quality += 4;
+		if(canStand(checkBlock.getRelative(0, -1, 0).getTypeId()))
+			quality += 4;
+		else if(canFall(checkBlock.getRelative(0, -1, 0).getTypeId()))
+			quality += 1;  // surface of water/lava is (barely) preferable to mid-air, and can be floored over
+		if(canStand(checkBlock.getRelative(xVal, -1, zVal).getTypeId()))
+			quality += 4;
+		else if(canFall(checkBlock.getRelative(xVal, -1, zVal).getTypeId()))
+			quality += 1;
 
 		// Check ground around frame.  Priority low, total 8.
-		if(canStand(checkBlock.getRelative(1, -1, 1).getTypeId())) quality += 2;
-		if (orientX)
-		{
-			if(canStand(checkBlock.getRelative(0, -1, -1).getTypeId())) quality += 2;
-			if(canStand(checkBlock.getRelative(1, -1, -1).getTypeId())) quality += 2;
-			if(canStand(checkBlock.getRelative(0, -1, 1).getTypeId())) quality += 2;
-		}
-		else
-		{
-			if(canStand(checkBlock.getRelative(-1, -1, 0).getTypeId())) quality += 2;
-			if(canStand(checkBlock.getRelative(-1, -1, 1).getTypeId())) quality += 2;
-			if(canStand(checkBlock.getRelative(1, -1, 0).getTypeId())) quality += 2;
+		if(canStand(checkBlock.getRelative(1, -1, 1).getTypeId()))
+			quality += 2;
+		if(canStand(checkBlock.getRelative(xVal - 1, -1, zVal - 1).getTypeId()))
+			quality += 2;
+		if(canStand(checkBlock.getRelative(zVal, -1, xVal).getTypeId()))
+			quality += 2;
+		if(orientX) {
+			if(canStand(checkBlock.getRelative(1, -1, -1).getTypeId()))
+				quality += 2;
+		} else {
+			if(canStand(checkBlock.getRelative(-1, -1, 1).getTypeId()))
+				quality += 2;
 		}
 
 		return(quality);
