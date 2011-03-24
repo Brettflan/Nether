@@ -15,8 +15,7 @@ import org.bukkit.util.Vector;
 import org.bukkit.World.Environment;
 
 public class NetherPlayerListener extends PlayerListener {
-	private static final boolean DEBUG = false;
-	
+
 	private NetherMain main;
 	
 	public NetherPlayerListener(NetherMain plugin) {
@@ -61,8 +60,8 @@ public class NetherPlayerListener extends PlayerListener {
 		int locY = loc.getBlockY();
 		int locZ = loc.getBlockZ();
 
-		if (DEBUG)
-			System.out.println("NETHER_PLUGIN: " + event.getPlayer().getName() + ": Hit portal at " + locX + ", "+ locZ);
+		if (main.debug)
+			System.out.println("NETHER_PLUGIN: " + event.getPlayer().getName() + " just entered a portal at: " + locX + ", " + locY + ", "+ locZ);
 
 		// For better mapping between nether and normal, always use the lowest
 		// xyz portal block
@@ -73,13 +72,13 @@ public class NetherPlayerListener extends PlayerListener {
 		while (world.getBlockAt(locX, locY, locZ - 1).getType().equals(Material.PORTAL))
 			--locZ;
 
-		if (DEBUG)
-			System.out.println("NETHER_PLUGIN: " + event.getPlayer().getName() + ": Using portal block:" + locX + ", " + locY + ", " + locZ);
+		if (main.debug)
+			System.out.println("NETHER_PLUGIN: " + event.getPlayer().getName() + ": Using portal block: " + locX + ", " + locY + ", " + locZ);
 
 		// Now check to see which way the portal is oriented.
 		boolean orientX = world.getBlockAt(locX + 1, locY, locZ).getType().equals(Material.PORTAL);
 
-		if (DEBUG) {
+		if (main.debug) {
 			if (orientX)
 				System.out.println("NETHER_PLUGIN: " + event.getPlayer().getName() + ": Portal is X oriented.");
 			else
@@ -95,7 +94,7 @@ public class NetherPlayerListener extends PlayerListener {
 
 			World nether = main.getServer().getWorld(netherName);
 			if (nether == null) {
-				event.getPlayer().sendMessage(ChatColor.RED + "First load of world " + netherName + ", please wait.");
+				event.getPlayer().sendMessage(ChatColor.RED + "Loading world " + netherName + ", please wait.");
 				nether = main.getServer().createWorld(netherName, Environment.NETHER);
 			}
 
@@ -114,11 +113,13 @@ public class NetherPlayerListener extends PlayerListener {
 			if (portal == null) {
 				// check the other portal column, just in case
 				if (orientX)
-					locAdjX = (locX + 1 >= 0) ? (locX + 1 / main.ratio) : (((locX + 2) / main.ratio) - 1);
+					locAdjX = (locX + 1 >= 0) ? ((locX + 1) / main.ratio) : (((locX + 2) / main.ratio) - 1);
 				else
-					locAdjZ = (locZ + 1 >= 0) ? (locZ + 1 / main.ratio) : (((locZ + 2) / main.ratio) - 1);
-				dest = nether.getBlockAt(locAdjX, locY, locAdjZ);
-				portal = NetherPortal.findPortal(dest, 1, event.getPlayer().getName());
+					locAdjZ = (locZ + 1 >= 0) ? ((locZ + 1) / main.ratio) : (((locZ + 2) / main.ratio) - 1);
+				
+				Block dest2 = nether.getBlockAt(locAdjX, locY, locAdjZ);
+				if (dest2 != dest)
+					portal = NetherPortal.findPortal(dest2, 1, event.getPlayer().getName());
 
 				// still no matching portal found? OK, we'll create one
 				if (portal == null) {
@@ -155,11 +156,12 @@ public class NetherPlayerListener extends PlayerListener {
 			NetherPortal portal = NetherPortal.findPortal(dest, main.ratio, event.getPlayer().getName());
 			if (portal == null) {
 				// check the other portal column, just in case
+				Block dest2;
 				if (orientX)
-					dest = normal.getBlockAt((locX + 1) * main.ratio, locY, locZ * main.ratio);
+					dest2 = normal.getBlockAt((locX + 1) * main.ratio, locY, locZ * main.ratio);
 				else
-					dest = normal.getBlockAt(locX * main.ratio, locY, (locZ + 1) * main.ratio);
-				portal = NetherPortal.findPortal(dest, 1, event.getPlayer().getName());
+					dest2 = normal.getBlockAt(locX * main.ratio, locY, (locZ + 1) * main.ratio);
+				portal = NetherPortal.findPortal(dest2, main.ratio, event.getPlayer().getName());
 
 				// still no matching portal found? OK, we'll create one
 				if (portal == null) {

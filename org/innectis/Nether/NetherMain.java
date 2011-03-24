@@ -27,8 +27,9 @@ public class NetherMain extends JavaPlugin
 	// track players who are currently standing in exit portals, so we know not to teleport them again until after they step out
 	public Set<String> playersInPortals = Collections.synchronizedSet(new HashSet<String>());
 
-	public String worldName;	// Nether world name/folder... default = "netherworld"
-	public int ratio;			// compression ratio of Nether world vs. normal world... default = 8
+	public static String worldName;		// Nether world name/folder... default = "netherworld"
+	public static int ratio;			// compression ratio of Nether world vs. normal world... default = 8
+	public static boolean debug;		// whether to output debug info to console
 	
 	public void onEnable()
 	{
@@ -37,9 +38,11 @@ public class NetherMain extends JavaPlugin
 		// Check the config.yml
 		worldName = properties.getString("nether-world-name");
 		ratio = properties.getInt("compression-ratio", 8);
+		debug = properties.getBoolean("debug-output", false);
 		if((worldName == null) || worldName.isEmpty()){
 			properties.setProperty("nether-world-name", "netherworld");
 			properties.setProperty("compression-ratio", 8);
+			properties.setProperty("debug-output", false);
 			properties.save();
 		}
 

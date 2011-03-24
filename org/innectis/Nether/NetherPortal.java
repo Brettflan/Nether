@@ -10,9 +10,9 @@ import org.bukkit.World.Environment;
 import java.util.ArrayList;
 
 public class NetherPortal {
-	private static final boolean DEBUG = false;
-	
+
 	private Block block;
+	private NetherMain main;
 	
 	public NetherPortal(Block b) {
 		block = b;
@@ -54,7 +54,7 @@ public class NetherPortal {
 
 	// Output a debug representation of the search for a portal block
 	public static void logSearch(char[][] a, int searchDistance, String playerName) {
-		if (DEBUG) {
+		if (NetherMain.debug) {
 			for (int y = searchDistance - 1; y >= 0; --y) {
 				String line = "";
 				for (int x = 0; x < searchDistance; ++x) {
@@ -116,7 +116,13 @@ public class NetherPortal {
 		// there's already a portal,
 		// it will occupy this block.
 		if (searchDistance < 2 || null != np)
+		{
+			if (np != null)
+				System.out.println("NETHER_PLUGIN: " + playerName + ": using coordinates at (X: " + (x + startX) + ", Z: " + (y + startY) + ").");
+			else
+				System.out.println("NETHER_PLUGIN: " + playerName + ": forcing coordinates (X: " + (x + startX) + ", Z: " + (y + startY) + ").");
 			return np;
+		}
 
 		// Since a portal is 2 blocks wide, we only need to
 		// check every other column.  We'll flip this flag
@@ -136,12 +142,12 @@ public class NetherPortal {
 		// [^][5][<][<][<][<][5][v]
 		// [7][<][<][<][<][<][<][7]
 
-		char[][] c;
-		if (DEBUG) {
+		char[][] c = null;
+		if (NetherMain.debug) {
 			c = new char[searchDistance][searchDistance];
 			c[x][y] = 'S';
 			
-			System.out.println("NETHER_PLUGIN: " + playerName + ": Starting portal search at (" + (x + startX) + ", " + (y + startY) + ").");
+			System.out.println("NETHER_PLUGIN: " + playerName + ": Starting portal search at (X: " + (x + startX) + ", Z: " + (y + startY) + ").");
 		}
 
 		int sign = -1;
@@ -166,14 +172,15 @@ public class NetherPortal {
 					
 					
 					if (null != np) {
-						if (DEBUG) {
+						if (NetherMain.debug) {
 							c[x][y] = 'X';
 							logSearch(c, searchDistance, playerName);
 						}
+						System.out.println("NETHER_PLUGIN: " + playerName + ": found portal at (X: " + (x + startX) + ", Z: " + (y + startY) + ").");
 						return np;
 					}
 
-					if (DEBUG) {
+					if (NetherMain.debug) {
 						if (checkColumn) {							
 							if (0 == xy) {
 								if (sign < 0)
@@ -203,7 +210,7 @@ public class NetherPortal {
 					// on the first iteration where n == searchDistance and
 					// we'll only need to travel n-1 blocks
 					if (0 == xy && n == searchDistance && i + 1 == n) {
-						if (DEBUG)
+						if (NetherMain.debug)
 							logSearch(c, searchDistance, playerName);
 
 						// Didn't find a portal
@@ -215,7 +222,7 @@ public class NetherPortal {
 			sign *= -1;
 		}
 		
-		if (DEBUG)
+		if (NetherMain.debug)
 			logSearch(c, searchDistance, playerName);
 
 		// Didn't find a portal
@@ -225,6 +232,8 @@ public class NetherPortal {
 	// Create a new portal at the specified block, fudging position if needed
 	// Will occasionally end up making portals in bad places, but let's hope not
 	public static NetherPortal createPortal(Block dest, boolean orientX) {
+
+		System.out.println("NETHER_PLUGIN: Creating new portal, " + (orientX ? "X oriented" : "Z oriented") + ". Searching along Y (vertical) for a good spot.");
 		World world = dest.getWorld();
 
 		// Not too high or too low overall
@@ -272,6 +281,8 @@ public class NetherPortal {
 
 		// Create the physical portal
 		int x = dest.getX(), y = dest.getY(), z = dest.getZ();
+
+		System.out.println("NETHER_PLUGIN: Creating new portal at (X: " + x + ", Y: " + y + ", Z: " + z + ")");
 		
 		ArrayList<Block> columns = new ArrayList<Block>();
 		for (int x2 = x - 4; x2 <= x + 5; ++x2) {
@@ -332,7 +343,7 @@ public class NetherPortal {
 		return new NetherPortal(dest);
 	}
 
-	// Returns a value 0-28.
+	// Returns a value 0-34.
 	private static int checkPortalQuality(Block checkBlock, boolean orientX){
 		int	quality = 0;
 		int xVal = orientX ? 1 : 0;
@@ -346,23 +357,23 @@ public class NetherPortal {
 		if(canBreathe(checkBlock.getRelative(0, 2, 0).getTypeId())) quality += 1;
 		if(canBreathe(checkBlock.getRelative(xVal, 2, zVal).getTypeId())) quality += 1;
 
-		// Check ground under frame.  Priority mid, total 6.
-		if(canStand(checkBlock.getRelative(0, -1, 0).getTypeId())) quality += 3;
-		if(canStand(checkBlock.getRelative(xVal, -1, zVal).getTypeId())) quality += 3;
+		// Check ground under frame.  Priority mid, total 8.
+		if(canStand(checkBlock.getRelative(0, -1, 0).getTypeId())) quality += 4;
+		if(canStand(checkBlock.getRelative(xVal, -1, zVal).getTypeId())) quality += 4;
 
-		// Check ground around frame.  Priority low, total 4.
-		if(canStand(checkBlock.getRelative(1, -1, 1).getTypeId())) quality += 1;
+		// Check ground around frame.  Priority low, total 8.
+		if(canStand(checkBlock.getRelative(1, -1, 1).getTypeId())) quality += 2;
 		if (orientX)
 		{
-			if(canStand(checkBlock.getRelative(0, -1, -1).getTypeId())) quality += 1;
-			if(canStand(checkBlock.getRelative(1, -1, -1).getTypeId())) quality += 1;
-			if(canStand(checkBlock.getRelative(0, -1, 1).getTypeId())) quality += 1;
+			if(canStand(checkBlock.getRelative(0, -1, -1).getTypeId())) quality += 2;
+			if(canStand(checkBlock.getRelative(1, -1, -1).getTypeId())) quality += 2;
+			if(canStand(checkBlock.getRelative(0, -1, 1).getTypeId())) quality += 2;
 		}
 		else
 		{
-			if(canStand(checkBlock.getRelative(-1, -1, 0).getTypeId())) quality += 1;
-			if(canStand(checkBlock.getRelative(-1, -1, 1).getTypeId())) quality += 1;
-			if(canStand(checkBlock.getRelative(1, -1, 0).getTypeId())) quality += 1;
+			if(canStand(checkBlock.getRelative(-1, -1, 0).getTypeId())) quality += 2;
+			if(canStand(checkBlock.getRelative(-1, -1, 1).getTypeId())) quality += 2;
+			if(canStand(checkBlock.getRelative(1, -1, 0).getTypeId())) quality += 2;
 		}
 
 		return(quality);
