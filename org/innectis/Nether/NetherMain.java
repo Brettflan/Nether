@@ -192,7 +192,7 @@ public class NetherMain extends JavaPlugin
 
 		}
 	}
-	public void EnterPortal(Player player)
+	public Location EnterPortal(Player player)
 	{
 		// add player to list of people who are in the process of portaling from one world to another
 		playerPortaled(player.getName());
@@ -204,12 +204,13 @@ public class NetherMain extends JavaPlugin
 		{
 			int timer = getServer().getScheduler().scheduleSyncRepeatingTask(this, new TeleportTimer(player, (delay * 1000), this), 10, 10);
 			teleportTimers.put(player.getName(), timer);
+			return null;
 		}
 		else
-			GoThroughPortal(player);
+			return GoThroughPortal(player);
 	}
 
-	public void GoThroughPortal(Player player)
+	public Location GoThroughPortal(Player player)
 	{
 		Location loc = player.getLocation();
 		World world = loc.getWorld();
@@ -259,7 +260,7 @@ public class NetherMain extends JavaPlugin
 			if (!nether.getEnvironment().equals(Environment.NETHER)) {
 				// Don't teleport to a non-nether world
 				System.out.println("NETHER_PLUGIN: " + player.getName() + ": ERROR: Nether world not found, aborting transport.");
-				return;
+				return null;
 			}
 
 			int locAdjX = (locX >= 0) ? (locX / ratio) : (((locX + 1) / ratio) - 1);
@@ -289,6 +290,7 @@ public class NetherMain extends JavaPlugin
 			Location spawn = portal.getSpawn(player.getLocation().getYaw());
 			nether.loadChunk(spawn.getBlock().getChunk());
 			ProcessMoveTo(player, spawn);
+			return spawn;
 
 		} else if (world.getEnvironment().equals(Environment.NETHER)) {
 			// For now just head to the first normal world there.
@@ -305,7 +307,7 @@ public class NetherMain extends JavaPlugin
 			if (normal == null) {
 				// Don't teleport to a non-normal world
 				System.out.println("NETHER_PLUGIN: " + player.getName() + ": ERROR: Normal world not found, aborting transport.");
-				return;
+				return null;
 			}
 
 			// Try to find a portal near where the player should land
@@ -330,7 +332,10 @@ public class NetherMain extends JavaPlugin
 			Location spawn = portal.getSpawn(player.getLocation().getYaw());
 			normal.loadChunk(spawn.getBlock().getChunk());
 			ProcessMoveTo(player, spawn);
+			return spawn;
 		}
+		else
+			return null;
 	}
 
 	public void ProcessMoveTo(Player player, Location location)	{

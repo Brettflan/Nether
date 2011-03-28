@@ -50,6 +50,10 @@ public class NetherPlayerListener extends PlayerListener {
 			return;
 		}
 
-		main.EnterPortal(player);
+		Location newLoc = main.EnterPortal(player);
+
+		// if delay is 0, we need to do event.setTo() to keep it from causing a "player moved wrongly" error
+		if (newLoc != null)
+			event.setTo(newLoc);
 	}
 }
