@@ -26,27 +26,36 @@ public class NetherPortal {
 	}
 
 	// Return a spawnable location
-	public Location getSpawn(float yaw, Vector velocity) {
+	public Location getSpawn(float yaw) {
+		// correct yaw to range of 360 degrees
+		yaw = yaw % 360;
+		if (yaw < 0) yaw += 360.0F;
+
 		// offset based on appropriate exit direction; remains barely inside portal at 0.19 away from center (which is 0.5), far enough for view to be unobscured
-		double offsetVelocity = 0.69;  // default for west(z+)/south(x+) offset
+		double offsetDirection = 0.69;  // default for west(z+)/south(x+) offset
 		double offsetCenter = 1.0;  // for center of portal, in middle of the 2 portal block columns
+
+		// make sure we're targeting the lowest (Y) portal block in the stack
+		while (block.getRelative(0, -1, 0).getType().equals(Material.PORTAL)) {
+			block = block.getRelative(0, -1, 0);
+		}
 
 		if (block.getRelative(1, 0, 0).getType().equals(Material.PORTAL) ||
 				block.getRelative(-1, 0, 0).getType().equals(Material.PORTAL)) {
 			// portal is in X direction
-			if (velocity.getZ() < 0)
-				offsetVelocity = 0.31;  // offset east(z-)
+			if (yaw > 90 && yaw <= 270)  // (yaw 180ish, facing east)
+				offsetDirection = 0.31;  // offset east(z-)
 			if (block.getRelative(-1, 0, 0).getType().equals(Material.PORTAL))
 				offsetCenter = 0;
 			return new Location(block.getWorld(), block.getX() + offsetCenter,
-					block.getY(), block.getZ() + offsetVelocity, yaw, 0);
+					block.getY(), block.getZ() + offsetDirection, yaw, 0);
 		} else {
 			// portal is in Z direction
-			if (velocity.getX() < 0)
-				offsetVelocity = 0.31;  // offset north(x-)
+			if (yaw > 0 && yaw <= 180)  // (yaw 90ish, facing north)
+				offsetDirection = 0.31;  // offset north(x-)
 			if (block.getRelative(0, 0, -1).getType().equals(Material.PORTAL))
 				offsetCenter = 0;
-			return new Location(block.getWorld(), block.getX() + offsetVelocity,
+			return new Location(block.getWorld(), block.getX() + offsetDirection,
 					block.getY(), block.getZ() + offsetCenter, yaw, 0);
 		}
 	}
@@ -116,10 +125,12 @@ public class NetherPortal {
 		// it will occupy this block.
 		if (searchDistance < 2 || null != np)
 		{
-			if (np != null)
-				System.out.println("NETHER_PLUGIN: " + playerName + ": using coordinates at (X: " + (x + startX) + ", Z: " + (y + startY) + ").");
-			else
-				System.out.println("NETHER_PLUGIN: " + playerName + ": forcing coordinates (X: " + (x + startX) + ", Z: " + (y + startY) + ").");
+			if (NetherMain.debug) {
+				if (np != null)
+					System.out.println("NETHER_PLUGIN: " + playerName + ": using coordinates at (X: " + (x + startX) + ", Z: " + (y + startY) + ").");
+				else
+					System.out.println("NETHER_PLUGIN: " + playerName + ": forcing coordinates (X: " + (x + startX) + ", Z: " + (y + startY) + ").");
+			}
 			return np;
 		}
 
@@ -174,8 +185,8 @@ public class NetherPortal {
 						if (NetherMain.debug) {
 							c[x][y] = 'X';
 							logSearch(c, searchDistance, playerName);
+							System.out.println("NETHER_PLUGIN: " + playerName + ": found portal at (X: " + (x + startX) + ", Z: " + (y + startY) + ").");
 						}
-						System.out.println("NETHER_PLUGIN: " + playerName + ": found portal at (X: " + (x + startX) + ", Z: " + (y + startY) + ").");
 						return np;
 					}
 
