@@ -37,10 +37,10 @@ public class NetherMain extends JavaPlugin
 	public static String worldName;		// Nether world name/folder... default = "netherworld"
 	public static int ratio;			// compression ratio of Nether world vs. normal world... default = 8
 	public static boolean debug;		// whether to output debug info to console... default = false
-	public static int delay;			// delay (in seconds) from player stepping into a portal and it actually triggering... default = 0
-	public static boolean showEntry;	// whether to show below portal entry text... default = false
+	public static int delay;			// delay (in seconds) from player stepping into a portal and it actually triggering... default = 5
+	public static boolean showEntry;	// whether to show below portal entry text... default = true
 	public static String entryText;		// text shown to player when they step into a portal
-	public static boolean showExit;		// whether to show below portal exit text... default = false
+	public static boolean showExit;		// whether to show below portal exit text... default = true
 	public static String exitText;		// text shown to player when they have just gone through a portal
 	
 	public void onEnable()
