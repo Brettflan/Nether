@@ -41,6 +41,8 @@ public class NetherPlayerListener extends PlayerListener {
 	
 	@Override
 	public void onPlayerMove(PlayerMoveEvent event) {
+		if (event.isCancelled()) return;
+
 		Location loc = event.getTo();
 		Block b = loc.getBlock();
 		Player player = event.getPlayer();

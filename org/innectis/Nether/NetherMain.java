@@ -32,7 +32,7 @@ public class NetherMain extends JavaPlugin
 	// track players who are currently standing in exit portals, so we know not to teleport them again until after they step out
 	public Set<String> playersInPortals = Collections.synchronizedSet(new HashSet<String>());
 	// timers for players standing in entrance portals, for (optional) delayed portal triggering
-	public HashMap<String, Integer> teleportTimers = new HashMap<String, Integer>();
+	public Map<String, Integer> teleportTimers = Collections.synchronizedMap(new HashMap<String, Integer>());
 
 	public static String worldName;		// Nether world name/folder... default = "netherworld"
 	public static int ratio;			// compression ratio of Nether world vs. normal world... default = 8
