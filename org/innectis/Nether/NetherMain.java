@@ -54,18 +54,22 @@ public class NetherMain extends JavaPlugin
 		delay = properties.getInt("portal-delay-seconds", 5);
 		showEntry = properties.getBoolean("show-entry-text", true);
 		entryText = properties.getString("portal-entry-text");
+		if (entryText == null || entryText.isEmpty())
+			entryText = "You feel the pull of nether energies.";
 		showExit = properties.getBoolean("show-exit-text", true);
 		exitText = properties.getString("portal-exit-text");
-		if((worldName == null) || worldName.isEmpty()){
+		if (exitText == null || exitText.isEmpty())
+			exitText = "The portal has taken you... elsewhere.";
+		if (worldName == null || worldName.isEmpty()){
 			worldName = "netherworld";
 			properties.setProperty("nether-world-name", worldName);
 			properties.setProperty("compression-ratio", 8);
 			properties.setProperty("debug-output", false);
 			properties.setProperty("portal-delay-seconds", 5);
 			properties.setProperty("show-entry-text", true);
-			properties.setProperty("portal-entry-text", "You feel the pull of nether energies.");
+			properties.setProperty("portal-entry-text", entryText);
 			properties.setProperty("show-exit-text", true);
-			properties.setProperty("portal-exit-text", "The portal has taken you... elsewhere.");
+			properties.setProperty("portal-exit-text", exitText);
 			properties.save();
 		}
 
