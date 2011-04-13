@@ -42,6 +42,7 @@ public class NetherMain extends JavaPlugin
 	public static String entryText;		// text shown to player when they step into a portal
 	public static boolean showExit;		// whether to show below portal exit text... default = true
 	public static String exitText;		// text shown to player when they have just gone through a portal
+	public static boolean spawnFix;		// whether to force respawns into non-nether world... default = true
 	
 	public void onEnable()
 	{
@@ -60,16 +61,18 @@ public class NetherMain extends JavaPlugin
 		exitText = properties.getString("portal-exit-text");
 		if (exitText == null || exitText.isEmpty())
 			exitText = "The portal has taken you... elsewhere.";
+		spawnFix = properties.getBoolean("spawn-fix", true);
 		if (worldName == null || worldName.isEmpty()){
 			worldName = "netherworld";
 			properties.setProperty("nether-world-name", worldName);
-			properties.setProperty("compression-ratio", 8);
-			properties.setProperty("debug-output", false);
-			properties.setProperty("portal-delay-seconds", 5);
-			properties.setProperty("show-entry-text", true);
+			properties.setProperty("compression-ratio", ratio);
+			properties.setProperty("debug-output", debug);
+			properties.setProperty("portal-delay-seconds", delay);
+			properties.setProperty("show-entry-text", entryText);
 			properties.setProperty("portal-entry-text", entryText);
-			properties.setProperty("show-exit-text", true);
+			properties.setProperty("show-exit-text", showExit);
 			properties.setProperty("portal-exit-text", exitText);
+			properties.setProperty("spawn-fix", spawnFix);
 			properties.save();
 		}
 
@@ -134,20 +137,27 @@ public class NetherMain extends JavaPlugin
 			// loop through list of players
 			for (Iterator<String> p = playersInPortals.iterator(); p.hasNext();)
 			{
-				String playerName = p.next();
-				Player player = getServer().getPlayer(playerName);
-				if (player == null || !player.isOnline() || player.getLocation() == null)
+				try
 				{
-					// player of specified name isn't accessible; maybe logged off
-					p.remove();
-					continue;
+					String playerName = p.next();
+					Player player = getServer().getPlayer(playerName);
+					if (player == null || !player.isOnline() || player.getLocation() == null)
+					{
+						// player of specified name isn't accessible; maybe logged off
+						p.remove();
+						continue;
+					}
+					Block b = player.getLocation().getBlock();
+					if (!b.getType().equals(Material.PORTAL))
+					{
+						// player is no longer standing in portal
+						p.remove();
+						continue;
+					}
 				}
-				Block b = player.getLocation().getBlock();
-				if (!b.getType().equals(Material.PORTAL))
+				catch (ConcurrentModificationException ex)
 				{
-					// player is no longer standing in portal
-					p.remove();
-					continue;
+					return;
 				}
 			}
 		}

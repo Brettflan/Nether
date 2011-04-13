@@ -23,7 +23,9 @@ public class NetherPlayerListener extends PlayerListener {
 	}
 	
 	@Override
-	public void onPlayerRespawn(PlayerRespawnEvent event) {		
+	public void onPlayerRespawn(PlayerRespawnEvent event) {
+		if (!main.spawnFix) return;
+
 		// Return nether-deaths to normal world
 		if (event.getRespawnLocation().getWorld().getEnvironment().equals(Environment.NETHER)) {
 			// For now just head to the first world there.
