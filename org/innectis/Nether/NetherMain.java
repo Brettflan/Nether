@@ -28,6 +28,7 @@ public class NetherMain extends JavaPlugin
 {
 	private final NetherPlayerListener playerListener = new NetherPlayerListener(this);
 	private Integer playerMonitor = null;
+	private Integer netherTimeSetter = null;
 
 	// track players who are currently standing in exit portals, so we know not to teleport them again until after they step out
 	public Set<String> playersInPortals = Collections.synchronizedSet(new HashSet<String>());
@@ -83,6 +84,8 @@ public class NetherMain extends JavaPlugin
 		
 		if (playerMonitor == null)
 			playerMonitor = getServer().getScheduler().scheduleSyncRepeatingTask(this, new NetherPortalMonitor(), 10, 10);
+		if (netherTimeSetter == null)  // night lasts 8400 ticks (~7 minutes), we'll go with 6000 (~5 minutes)
+			netherTimeSetter = getServer().getScheduler().scheduleSyncRepeatingTask(this, new NetherTimeSetter(), 30, 6000);
 
 		// Say hi
 		PluginDescriptionFile pdfFile = this.getDescription();
@@ -95,8 +98,12 @@ public class NetherMain extends JavaPlugin
 
 	public void onDisable() {
 		// let's clean up after ourselves
-		getServer().getScheduler().cancelTask(playerMonitor);
+		if (playerMonitor != null)
+			getServer().getScheduler().cancelTask(playerMonitor);
 		playerMonitor = null;
+		if (netherTimeSetter != null)
+			getServer().getScheduler().cancelTask(netherTimeSetter);
+		netherTimeSetter = null;
 		playersInPortals.clear();
 		for (Entry<String, Integer> tt : teleportTimers.entrySet())
 		{
@@ -125,6 +132,24 @@ public class NetherMain extends JavaPlugin
 		if (timer == null)
 			return;
 		getServer().getScheduler().cancelTask(timer);
+	}
+
+	// this task runs every ~5 minutes, resetting the time in the nether to early night
+	private class NetherTimeSetter implements Runnable
+	{
+		public void run() {
+			String netherName = worldName;
+			if((netherName == null) || netherName.isEmpty()) netherName = "netherworld";
+
+			World nether = getServer().getWorld(netherName);
+			if (nether == null) return;
+
+			if (debug)
+				System.out.println("NETHER_PLUGIN: Setting time back to early night in " + netherName);
+
+			// 15000 should be 1 minute into night-time, which should start at 13800
+			nether.setTime(15000);
+		}
 	}
 
 	// this task runs every few ticks, clearing players from playersInPortals set as needed
