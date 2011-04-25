@@ -10,7 +10,8 @@ features.
     formed around them.
   - Dying in the Nether will respawn players in the normal world.
 
-Nether is currently on version 1.1.
+This is an unofficial build with many changes, made from the following fork:
+	https://github.com/Brettflan/Nether
 
 == LICENSE ==
 
