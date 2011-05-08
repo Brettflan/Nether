@@ -149,6 +149,9 @@ public class NetherMain extends JavaPlugin
 
 			// 15000 should be 1 minute into night-time, which should start at 13800
 			nether.setTime(15000);
+
+			// make sure this is marked for cleanup
+			nether = null;
 		}
 	}
 
@@ -170,6 +173,7 @@ public class NetherMain extends JavaPlugin
 					{
 						// player of specified name isn't accessible; maybe logged off
 						p.remove();
+						player = null;
 						continue;
 					}
 					Block b = player.getLocation().getBlock();
@@ -177,8 +181,9 @@ public class NetherMain extends JavaPlugin
 					{
 						// player is no longer standing in portal
 						p.remove();
-						continue;
 					}
+					player = null;
+					b = null;
 				}
 				catch (ConcurrentModificationException ex)
 				{
@@ -193,30 +198,36 @@ public class NetherMain extends JavaPlugin
 		private long started;		// time this task was initiated
 		private long delay;			// how long to delay the teleport
 		public Player player;		// the person doing the teleport
-		private NetherMain main;	// pointer to the main plugin
+		public String playerName;	// name of the person doing the teleport
 
 		public TeleportTimer(Player player, long delay, NetherMain plugin)
 		{
 			this.started = Calendar.getInstance().getTimeInMillis();
 			this.delay = delay;
 			this.player = player;
-			this.main = plugin;
+			this.playerName = player.getName();
+		}
+
+		public void finish()
+		{
+			player = null;
+			CancelTimer(playerName);
 		}
 
 		public void run()
 		{
 			if (player == null || !player.isOnline() || player.getLocation() == null)
 			{
-				// player of specified name isn't accessible; maybe logged off
-				playersInPortals.remove(player.getName());
-				main.CancelTimer(player.getName());
+				// player isn't accessible; maybe logged off
+				playersInPortals.remove(playerName);
+				this.finish();
 				return;
 			}
 			else if (!player.getLocation().getBlock().getType().equals(Material.PORTAL))
 			{
 				// player is no longer standing in portal
-				playersInPortals.remove(player.getName());
-				main.CancelTimer(player.getName());
+				playersInPortals.remove(playerName);
+				this.finish();
 				return;
 			}
 
@@ -224,7 +235,7 @@ public class NetherMain extends JavaPlugin
 			if (now > started + delay)
 			{  // it's go time
 				GoThroughPortal(player);
-				main.CancelTimer(player.getName());
+				this.finish();
 			}
 			//else  // uncomment for timing debug
 			//	player.sendMessage("ms: " + (started + delay - now));
@@ -246,7 +257,11 @@ public class NetherMain extends JavaPlugin
 			return null;
 		}
 		else
-			return GoThroughPortal(player);
+		{
+			Location loc = GoThroughPortal(player);
+			player = null;
+			return loc;
+		}
 	}
 
 	public Location GoThroughPortal(Player player)
@@ -257,6 +272,7 @@ public class NetherMain extends JavaPlugin
 		int locX = loc.getBlockX();
 		int locY = loc.getBlockY();
 		int locZ = loc.getBlockZ();
+		loc = null;
 
 		if (debug)
 			System.out.println("NETHER_PLUGIN: " + player.getName() + " just entered a portal at: " + locX + ", " + locY + ", "+ locZ);
@@ -299,6 +315,7 @@ public class NetherMain extends JavaPlugin
 			if (!nether.getEnvironment().equals(Environment.NETHER)) {
 				// Don't teleport to a non-nether world
 				System.out.println("NETHER_PLUGIN: " + player.getName() + ": ERROR: Nether world not found, aborting transport.");
+				world = null;
 				return null;
 			}
 
@@ -327,8 +344,8 @@ public class NetherMain extends JavaPlugin
 
 			// Go!
 			Location spawn = portal.getSpawn(player.getLocation().getYaw());
-			nether.loadChunk(spawn.getBlock().getChunk());
 			ProcessMoveTo(player, spawn);
+			world = null;
 			return spawn;
 
 		} else if (world.getEnvironment().equals(Environment.NETHER)) {
@@ -346,6 +363,7 @@ public class NetherMain extends JavaPlugin
 			if (normal == null) {
 				// Don't teleport to a non-normal world
 				System.out.println("NETHER_PLUGIN: " + player.getName() + ": ERROR: Normal world not found, aborting transport.");
+				normal = null;
 				return null;
 			}
 
@@ -369,8 +387,8 @@ public class NetherMain extends JavaPlugin
 
 			// Go!
 			Location spawn = portal.getSpawn(player.getLocation().getYaw());
-			normal.loadChunk(spawn.getBlock().getChunk());
 			ProcessMoveTo(player, spawn);
+			normal = null;
 			return spawn;
 		}
 		else
@@ -388,6 +406,9 @@ public class NetherMain extends JavaPlugin
 		if (showExit && !exitText.isEmpty())
 			player.sendMessage(ChatColor.DARK_PURPLE + exitText);
 
-		player.teleportTo(location);
+		player.teleport(location);
+
+		location = null;
+		player = null;
 	}
 }

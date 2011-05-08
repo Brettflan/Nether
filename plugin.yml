@@ -1,6 +1,6 @@
 name: Nether
 author: SpaceManiac
 description: Super-Simple Nether Portals
-version: 1.4 (Brettflan)
+version: 1.4.1 (Brettflan)
 main: org.innectis.Nether.NetherMain
 

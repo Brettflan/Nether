@@ -1,8 +1,5 @@
 package org.innectis.Nether;
 
-import java.util.ListIterator;
-
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerListener;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -11,7 +8,6 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.util.Vector;
 import org.bukkit.World.Environment;
 
 public class NetherPlayerListener extends PlayerListener {
@@ -32,12 +28,17 @@ public class NetherPlayerListener extends PlayerListener {
 			World normal = main.getServer().getWorlds().get(0);
 			if (!normal.getEnvironment().equals(Environment.NORMAL)) {
 				// Don't teleport to a non-normal world
+				normal = null;
 				return;
 			}
 			
 			Location respawnLocation = normal.getSpawnLocation();
 			System.out.println("NETHER_PLUGIN: " + event.getPlayer().getName() + " respawns to normal world");
 			event.setRespawnLocation(respawnLocation);
+
+			// make sure these are marked for cleanup
+			normal = null;
+			respawnLocation = null;
 		}
 	}
 	
@@ -45,12 +46,13 @@ public class NetherPlayerListener extends PlayerListener {
 	public void onPlayerMove(PlayerMoveEvent event) {
 		if (event.isCancelled()) return;
 
-		Location loc = event.getTo();
-		Block b = loc.getBlock();
 		Player player = event.getPlayer();
+		Block b = player.getLocation().getBlock();
 
 		if (!b.getType().equals(Material.PORTAL) || main.playerInPortal(player.getName())) {
 			// Not a portal, or player is still standing in a portal from earlier.
+			player = null;
+			b = null;
 			return;
 		}
 
@@ -59,5 +61,10 @@ public class NetherPlayerListener extends PlayerListener {
 		// if delay is 0, we need to do event.setTo() to keep it from causing a "player moved wrongly" error
 		if (newLoc != null)
 			event.setTo(newLoc);
+
+		// make sure these are marked for cleanup
+		player = null;
+		b = null;
+		newLoc = null;
 	}
 }
